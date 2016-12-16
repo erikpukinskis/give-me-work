@@ -96,8 +96,6 @@ module.exports = library.export(
         }
       )
 
-      var skipTo
-
       site.addRoute("get",
         "/work-space/:spaceId/dont-want/:text",
         function(request, response) {
@@ -119,12 +117,12 @@ module.exports = library.export(
         if (oldTask) {
           var nextIndex = list.tasks.indexOf(oldTask) + 1
         } else {
-          nextIndex = 0
+          nextIndex = 37
         }
 
         var whereWeStarted = nextIndex
 
-        while (list.tasksCompleted[nextIndex]) {
+        do {
           nextIndex++
 
           if (!list.tasks[nextIndex]) {
@@ -134,13 +132,20 @@ module.exports = library.export(
           if (nextIndex == whereWeStarted) {
             throw new Error("No tasks available")
           }
-        }
+
+        } while(list.tasksCompleted[nextIndex])
 
         console.log("Skipping to", nextIndex)
 
-        var newtask = list.tasks[nextIndex]
+        var newTask = list.tasks[nextIndex]
 
-        workSpace.focusOn(space, list.id, newtask)
+        if (!newTask) {
+          console.log("list", JSON.stringify(list, null, 2))
+          console.log("space", JSON.stringify(space, null, 2))
+          throw new Error("current task is undefined!")
+        }
+
+        workSpace.focusOn(space, list.id, newTask)
 
         if (space.isPersisted) {
           saveSkipEventually(space, list.id)
