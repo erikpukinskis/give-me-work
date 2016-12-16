@@ -113,11 +113,11 @@ module.exports = library.export(
       )
 
       function getNewTask(space, list, oldTask) {
-
+        
         if (oldTask) {
-          var nextIndex = list.tasks.indexOf(oldTask) + 1
+          var nextIndex = list.tasks.indexOf(oldTask)
         } else {
-          nextIndex = 37
+          nextIndex = 36
         }
 
         var whereWeStarted = nextIndex
