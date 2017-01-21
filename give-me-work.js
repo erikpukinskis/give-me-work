@@ -5,7 +5,7 @@ module.exports = library.export(
   ["web-element", "browser-bridge", "basic-styles", "tell-the-universe", "release-checklist", "work-space"],
   function(element, baseBridge, basicStyles, tellTheUniverse,releaseChecklist, workSpace) {
 
-    return function(site) {
+    function prepareSite(site) {
 
       baseBridge.addToHead(basicStyles)
 
@@ -53,31 +53,6 @@ module.exports = library.export(
         }
       )
 
-      function sendWorkSpace(space, bridge) {
-
-        if (space.isPersisted) {
-          bridge.changePath("/work-space/"+space.id)
-        }
-
-        var job = element("p", "Make it so «"+space.currentTask+"» is possible")
-        job.appendStyles({"min-height": "2.5em"})
-
-        var putBack = element("a.button", "Put it back", {href: "/work-space/"+space.id+"/dont-want/"+encodeURIComponent(space.currentTask)})
-
-        var body = [job, putBack]
-
-        if (space.isPersisted) {
-          var complete = element("a.button", "It's done", {href: "/work-space/"+space.id+"/mark-completed/"+encodeURIComponent(space.currentTask)})
-
-          body.push(complete)
-        } else {
-          var start = element("a.button", "Start working", {href: "/work-space/"+space.id+"/start-working"})
-
-          body.push(start)
-        }
-
-        bridge.send(body)
-      }
 
       site.addRoute("get",
         "/work-space/:id/mark-completed/:text",
@@ -112,46 +87,6 @@ module.exports = library.export(
         }
       )
 
-      function getNewTask(space, list, oldTask) {
-        
-        if (oldTask) {
-          var nextIndex = list.tasks.indexOf(oldTask)
-        } else {
-          nextIndex = 36
-        }
-
-        var whereWeStarted = nextIndex
-
-        do {
-          nextIndex++
-
-          if (!list.tasks[nextIndex]) {
-            nextIndex = 0
-          }
-
-          if (nextIndex == whereWeStarted) {
-            throw new Error("No tasks available")
-          }
-
-        } while(list.tasksCompleted[nextIndex])
-
-        console.log("Skipping to", nextIndex)
-
-        var newTask = list.tasks[nextIndex]
-
-        if (!newTask) {
-          console.log("list", JSON.stringify(list, null, 2))
-          console.log("space", JSON.stringify(space, null, 2))
-          throw new Error("current task is undefined!")
-        }
-
-        workSpace.focusOn(space, list.id, newTask)
-
-        if (space.isPersisted) {
-          saveSkipEventually(space, list.id)
-        }
-      }
-
       site.addRoute("get",
         "/work-space/:id/start-working",
         function(request, response) {
@@ -168,26 +103,102 @@ module.exports = library.export(
         }
       )
 
-      function saveSkipEventually(space, listId) {
-        if (space.saving) {
-          clearTimeout(space.skipSaveTimeout)
-        } else {
-          space.saving = true
-        }
-        
-        space.skipSaveTimeout = setTimeout(saveSkip.bind(null, space, listId), 3000)
+    }
+
+
+    function sendWorkSpace(space, bridge) {
+
+      if (space.isPersisted) {
+        bridge.changePath("/work-space/"+space.id)
       }
 
-      function saveSkip(space, listId) {
-        space.saving = false
+      var job = element("p", "Make it so «"+space.currentTask+"» is possible")
+      job.appendStyles({"min-height": "2.5em"})
 
-        if (!space.isPersisted) {
-          tellTheUniverse("workSpace", space.id)
-          space.isPersisted = true
+      var putBack = element("a.button", "Put it back", {href: "/work-space/"+space.id+"/dont-want/"+encodeURIComponent(space.currentTask)})
+
+      var body = [job, putBack]
+
+      if (space.isPersisted) {
+        var complete = element("a.button", "It's done", {href: "/work-space/"+space.id+"/mark-completed/"+encodeURIComponent(space.currentTask)})
+
+        body.push(complete)
+      } else {
+        var start = element("a.button", "Start working", {href: "/work-space/"+space.id+"/start-working"})
+
+        body.push(start)
+      }
+
+      bridge.send(body)
+    }
+
+
+    function getNewTask(space, list, oldTask) {
+      
+      if (oldTask) {
+        var nextIndex = list.tasks.indexOf(oldTask)
+      } else {
+        nextIndex = 36
+      }
+
+      var whereWeStarted = nextIndex
+
+      do {
+        nextIndex++
+
+        if (!list.tasks[nextIndex]) {
+          nextIndex = 0
         }
 
-        tellTheUniverse("workSpace.focusOn", space.id, listId, space.currentTask)
+        if (nextIndex == whereWeStarted) {
+          throw new Error("No tasks available")
+        }
+
+      } while(list.tasksCompleted[nextIndex])
+
+      console.log("Skipping to", nextIndex)
+
+      var newTask = list.tasks[nextIndex]
+
+      if (!newTask) {
+        console.log("list", JSON.stringify(list, null, 2))
+        console.log("space", JSON.stringify(space, null, 2))
+        throw new Error("current task is undefined!")
+      }
+
+      workSpace.focusOn(space, list.id, newTask)
+
+      if (space.isPersisted) {
+        saveSkipEventually(space, list.id)
       }
     }
+    
+    function saveSkipEventually(space, listId) {
+      if (space.saving) {
+        clearTimeout(space.skipSaveTimeout)
+      } else {
+        space.saving = true
+      }
+      
+      space.skipSaveTimeout = setTimeout(saveSkip.bind(null, space, listId), 3000)
+    }
+
+    function saveSkip(space, listId) {
+      space.saving = false
+
+      if (!space.isPersisted) {
+        tellTheUniverse("workSpace", space.id)
+        space.isPersisted = true
+      }
+
+      tellTheUniverse("workSpace.focusOn", space.id, listId, space.currentTask)
+    }
+
+    sendWorkSpace.prepareSite = prepareSite
+
+    sendWorkSpace.getNewTask = getNewTask
+    
+
+    return sendWorkSpace
   }
 )
