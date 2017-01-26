@@ -166,8 +166,6 @@ module.exports = library.export(
 
       } while(list.tasksCompleted[nextIndex])
 
-      console.log("Skipping to", nextIndex)
-
       var newTask = list.tasks[nextIndex]
 
       if (!newTask) {
@@ -207,7 +205,6 @@ module.exports = library.export(
     var list
 
     renderWorkSpace.drawFromList = function(focusList) {
-      console.log("\nHA\n")
       list = focusList
     }
     renderWorkSpace.prepareSite = prepareSite
