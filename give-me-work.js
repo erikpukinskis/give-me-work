@@ -3,7 +3,10 @@ var library = require("module-library")(require)
 module.exports = library.export(
   "give-me-work",
   ["web-element", "browser-bridge", "basic-styles", "tell-the-universe", "release-checklist", "work-space"],
-  function(element, baseBridge, basicStyles, tellTheUniverse,releaseChecklist, workSpace) {
+  function(element, BrowserBridge, basicStyles, tellTheUniverse,releaseChecklist, workSpace) {
+
+    var baseBridge = new BrowserBridge()
+    baseBridge.addToBody(element("a", element.style({"display": "block"}), {href: "/"}, "&#8617; Back to workspace"))
 
     function prepareSite(site) {
 
@@ -21,12 +24,9 @@ module.exports = library.export(
       site.addRoute("get",
         "/give-me-work",
         function(request, response) {
-          var button = element("a.button", "Give me programming work", {href: "/give-me-work/programming"})
-
-          baseBridge.requestHandler([button])(request, response)
+          renderGetWorkButtons(baseBridge.forResponse(response))
         }
       )
-
 
       site.addRoute("get",
         "/give-me-work/programming",
@@ -34,13 +34,11 @@ module.exports = library.export(
 
           var space = workSpace()
 
-          var list = releaseChecklist.get("putw4e")
-
-          getNewTask(space, list)
+          getNewTask(space)
 
           var bridge = baseBridge.forResponse(response)
 
-          sendWorkSpace(space, bridge)
+          renderWorkSpace(space, bridge)
         }
       )
 
@@ -49,7 +47,7 @@ module.exports = library.export(
         function(request, response) {
           var space = workSpace.get(request.params.id)
 
-          sendWorkSpace(space, baseBridge.forResponse(response))
+          renderWorkSpace(space, baseBridge.forResponse(response))
         }
       )
 
@@ -59,15 +57,14 @@ module.exports = library.export(
         function(request, response) {
           var task = request.params.text
           var space = workSpace.get(request.params.id)
-          var list = releaseChecklist.get("putw4e")
 
           releaseChecklist.checkOff(list, task)
 
-          getNewTask(space, list, task)
+          getNewTask(space, task)
 
           tellTheUniverse("releaseChecklist.checkOff", list.id, task)
 
-          sendWorkSpace(space, baseBridge.forResponse(response))
+          renderWorkSpace(space, baseBridge.forResponse(response))
         }
       )
 
@@ -75,15 +72,14 @@ module.exports = library.export(
         "/work-space/:spaceId/dont-want/:text",
         function(request, response) {
 
-          var list = releaseChecklist.get("putw4e")
           var space = workSpace.get(request.params.spaceId)
           var task = request.params.text
 
-          getNewTask(space, list, task)
+          getNewTask(space, task)
 
           var bridge = baseBridge.forResponse(response)
 
-          sendWorkSpace(space, bridge)
+          renderWorkSpace(space, bridge)
         }
       )
 
@@ -91,7 +87,6 @@ module.exports = library.export(
         "/work-space/:id/start-working",
         function(request, response) {
           var space = workSpace.get(request.params.id)
-          var list = releaseChecklist.get("putw4e")
 
           saveSkipEventually(space, list.id)
 
@@ -99,19 +94,13 @@ module.exports = library.export(
 
           bridge.changePath("/work-space/"+space.id)
 
-          sendWorkSpace(space, bridge)
+          renderWorkSpace(space, bridge)
         }
       )
 
     }
 
-
-    function sendWorkSpace(space, bridge) {
-
-      if (space.isPersisted) {
-        bridge.changePath("/work-space/"+space.id)
-      }
-
+    function renderTask(space, bridge) {
       var job = element("p", "Make it so «"+space.currentTask+"» is possible")
       job.appendStyles({"min-height": "2.5em"})
 
@@ -130,10 +119,31 @@ module.exports = library.export(
       }
 
       bridge.send(body)
+
+    }
+
+    function renderGetWorkButtons(bridge) {
+
+      var button = element("a.button", "Give me programming work", {href: "/give-me-work/programming"})
+
+      bridge.send(button)
+    }
+
+    function renderWorkSpace(space, bridge) {
+
+      if (space.isPersisted) {
+        bridge.changePath("/work-space/"+space.id)
+      }
+
+      if (space.currentTask) {
+        renderTask(space, bridge)
+      } else {
+        renderGetWorkButtons(bridge)
+      }
     }
 
 
-    function getNewTask(space, list, oldTask) {
+    function getNewTask(space, oldTask) {
       
       if (oldTask) {
         var nextIndex = list.tasks.indexOf(oldTask)
@@ -194,11 +204,15 @@ module.exports = library.export(
       tellTheUniverse("workSpace.focusOn", space.id, listId, space.currentTask)
     }
 
-    sendWorkSpace.prepareSite = prepareSite
+    var list
 
-    sendWorkSpace.getNewTask = getNewTask
+    renderWorkSpace.drawFromList = function(focusList) {
+      console.log("\nHA\n")
+      list = focusList
+    }
+    renderWorkSpace.prepareSite = prepareSite
     
 
-    return sendWorkSpace
+    return renderWorkSpace
   }
 )
